@@ -9,7 +9,6 @@ const path = require("path");
 const parser = require("@babel/parser");
 const traverse = require("@babel/traverse").default;
 const babel = require("@babel/core");
-console.log(traverse);
 
 // * 递归获取所有依赖
 const parseModules = (file) => {
@@ -30,7 +29,7 @@ const parseModules = (file) => {
   temp.forEach((moduleInfo) => {
     depsGraph[moduleInfo.file] = {
       deps: moduleInfo.deps,
-      code: moduleInfo.code
+      code: moduleInfo.code,
     };
   });
   console.log(depsGraph);
@@ -38,6 +37,7 @@ const parseModules = (file) => {
   return depsGraph;
 };
 
+// * 获取模块的路径、模块的依赖、模块转为es5的代码。
 const getModuleInfo = (file) => {
   const body = fs.readFileSync(file, "utf-8");
 
@@ -50,7 +50,7 @@ const getModuleInfo = (file) => {
 
   traverse(ast, {
     ImportDeclaration({ node }) {
-      console.log(node);
+      // console.log(node);
       const dirname = path.dirname(file);
       const abspath = `./${path.join(dirname, node.source.value)}`;
       deps[node.source.value] = abspath;
@@ -61,11 +61,30 @@ const getModuleInfo = (file) => {
   const { code } = babel.transformFromAst(ast, null, {
     presets: ["@babel/preset-env"],
   });
-  console.log(code);
+  // console.log(code);
 
   // * 返回了一个对象，包括模块的路径、模块的依赖、模块转为es5的代码。
   const moduleInfo = { file, deps, code };
   return moduleInfo;
 };
 
-parseModules("./src/index.js");
+const bundle = (file) => {
+  const depsGraph = JSON.stringify(parseModules(file));
+  return `(function (graph) {
+    function require(file) {
+      function absRequire(relPath) {
+        return require(graph[file].deps[relPath]);
+      }
+      var exports = {};
+      (function (require, code) {
+        eval(code);
+      })(absRequire, graph[file].code);
+      return exports;
+    }
+    require(file);
+  })(depsGraph);`
+};
+
+const file = bundle("./src/index.js");
+console.log(file);
+// parseModules("./src/index.js");
