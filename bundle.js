@@ -9,6 +9,7 @@ const path = require("path");
 const parser = require("@babel/parser");
 const traverse = require("@babel/traverse").default;
 const babel = require("@babel/core");
+const ejs = require('ejs');
 
 // * 递归获取所有依赖
 const parseModules = (file) => {
@@ -32,7 +33,7 @@ const parseModules = (file) => {
       code: moduleInfo.code,
     };
   });
-  console.log(depsGraph);
+  // console.log(depsGraph);
 
   return depsGraph;
 };
@@ -69,22 +70,26 @@ const getModuleInfo = (file) => {
 };
 
 const bundle = (file) => {
-  const depsGraph = JSON.stringify(parseModules(file));
-  return `(function (graph) {
-    function require(file) {
-      function absRequire(relPath) {
-        return require(graph[file].deps[relPath]);
-      }
-      var exports = {};
-      (function (require, code) {
-        eval(code);
-      })(absRequire, graph[file].code);
-      return exports;
-    }
-    require(file);
-  })(depsGraph);`
+  const depsGraph = parseModules(file);
+  console.log(depsGraph);
+  ejs.render(fs.readFileSync("./bundle.ejs"), {
+    modules: depsGraph,
+  });
+  // return `(function (graph) {
+  //   function require(file) {
+  //     function absRequire(relPath) {
+  //       return require(graph[file].deps[relPath]);
+  //     }
+  //     var exports = {};
+  //     (function (require, code) {
+  //       eval(code);
+  //     })(absRequire, graph[file].code);
+  //     return exports;
+  //   }
+  //   require(file);
+  // })(depsGraph);`
+  return 'xx';
 };
 
 const file = bundle("./src/index.js");
 console.log(file);
-// parseModules("./src/index.js");
