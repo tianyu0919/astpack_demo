@@ -1,0 +1,10 @@
+(function(module){
+  console.log(module);
+
+})({
+<% Object.keys(modules).forEach(key => { %>
+    "<%= key %>": [
+    <%- modules[key].code %>
+    ]
+<% }) %>
+})
