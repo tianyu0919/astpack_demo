@@ -88,9 +88,11 @@ const bundle = (file) => {
     entry,
   });
   console.log(template);
+  // * 输出 bundle.js 文件
   fs.writeFile("./bundle.js", template, (err) => {
     if (err) {
       // console.log(err);
+      throw err;
     }
   });
 
