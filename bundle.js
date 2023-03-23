@@ -1,111 +1,91 @@
-/*
- * @Author: tianyu
- * @Date: 2023-03-14 17:35:05
- * @Description: https://juejin.cn/post/6854573217336541192
- */
-// * 获取主入口文件
-const fs = require("fs");
-const path = require("path");
-const parser = require("@babel/parser");
-const traverse = require("@babel/traverse").default;
-const babel = require("@babel/core");
-const ejs = require("ejs");
+(function(modules){
+  const entry = "./src/index.js" // * 找到入口文件
 
-// * 递归获取所有依赖
-const parseModules = (file) => {
-  const entry = getModuleInfo(file);
-  const temp = [entry];
-  const depsGraph = {};
-  for (let i = 0; i < temp.length; i++) {
-    const deps = temp[i].deps;
-    if (deps) {
-      for (const key in deps) {
-        if (deps.hasOwnProperty(key)) {
-          temp.push(getModuleInfo(deps[key]));
-        }
-      }
+  /**
+   * @param {string} path
+   * @returns {object}
+   * @description 根据入口文件路径拿到对应的模块
+   */
+  function require(path) {
+    const [moduleFunction, dependencies] = modules[path]; // * 在传进来的modules中，根据入口文件路径拿到对一个主模块的[方法, 依赖项]
+    const module = { exports: { } } // * 创建一个模块的全局变量，后续将传递给每个模块的方法中。
+
+    /**
+     * @param {string} depsPath
+     * @description 拿到模块的依赖项，并赋值给module.exports
+     */
+    function localRequire(depsPath) {
+      const modulePath = dependencies[depsPath];
+      return require(modulePath);
     }
+
+    /**
+     * @param {object} localRequire
+     * @param {object} module.exports
+     * @description 将模块的方法赋值给module.exports
+     */
+    moduleFunction(localRequire, module.exports);
+    return module.exports;
   }
 
-  temp.forEach((moduleInfo) => {
-    depsGraph[moduleInfo.file] = {
-      deps: moduleInfo.deps,
-      code: moduleInfo.code,
-    };
-  });
-  // console.log(depsGraph);
+  require(entry);
+})({
 
-  return depsGraph;
+    "./src/index.js": [(require, exports) => { 
+      "use strict";
+
+var _add = _interopRequireDefault(require("./add.js"));
+var _minus = require("./minus.js");
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
+var sum = (0, _add["default"])(1, 2);
+var division = (0, _minus.minus)(2, 1);
+console.log(sum);
+console.log(division);
+    }, 
+    {"./add.js":"./src/add.js","./minus.js":"./src/minus.js"}],
+
+    "./src/add.js": [(require, exports) => { 
+      "use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports["default"] = void 0;
+var _other = _interopRequireDefault(require("./other.js"));
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
+(0, _other["default"])();
+var _default = function _default(a, b) {
+  return a + b;
 };
+exports["default"] = _default;
+    }, 
+    {"./other.js":"./src/other.js"}],
 
-// * 获取模块的路径、模块的依赖、模块转为es5的代码。
-const getModuleInfo = (file) => {
-  const body = fs.readFileSync(file, "utf-8");
+    "./src/minus.js": [(require, exports) => { 
+      "use strict";
 
-  // * 转换为代码树
-  const ast = parser.parse(body, {
-    sourceType: "module",
-  });
-
-  const deps = {};
-
-  traverse(ast, {
-    ImportDeclaration({ node }) {
-      // console.log(node);
-      const dirname = path.dirname(file);
-      const abspath = `./${path.join(dirname, node.source.value)}`;
-      deps[node.source.value] = abspath;
-    },
-  });
-
-  // * 将ES6代码转换为ES5
-  const { code } = babel.transformFromAst(ast, null, {
-    presets: ["@babel/preset-env"],
-  });
-  // console.log(code);
-
-  // * 返回了一个对象，包括模块的路径、模块的依赖、模块转为es5的代码。
-  const moduleInfo = { file, deps, code };
-  return moduleInfo;
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.minus = void 0;
+var minus = function minus(a, b) {
+  return a - b;
 };
+exports.minus = minus;
+    }, 
+    {}],
 
-const bundle = (file) => {
-  const depsGraph = parseModules(file);
-  // console.log(depsGraph);
-  const data = Buffer.from(JSON.stringify(depsGraph, null, 2));
-  // console.log(data);
+    "./src/other.js": [(require, exports) => { 
+      "use strict";
 
-  fs.writeFile("./data.json", data, (err) => {
-    if (err) {
-      // console.log(err);
-    }
-  });
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports["default"] = _default;
+function _default() {
+  console.log('this is other function');
+}
+    }, 
+    {}],
 
-  let template = ejs.render(fs.readFileSync("./bundle.ejs").toString(), {
-    modules: depsGraph,
-  });
-  console.log(template);
-  fs.writeFile("./dist.js", template, (err) => {
-    if (err) {
-      // console.log(err);
-    }
-  });
-
-  // return `(function (graph) {
-  //   function require(file) {
-  //     function absRequire(relPath) {
-  //       return require(graph[file].deps[relPath]);
-  //     }
-  //     var exports = {};
-  //     (function (require, code) {
-  //       eval(code);
-  //     })(absRequire, graph[file].code);
-  //     return exports;
-  //   }
-  //   require(file);
-  // })(depsGraph);`
-  return "xx";
-};
-
-const file = bundle("./src/index.js");
-console.log(file);
+})
