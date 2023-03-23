@@ -70,6 +70,7 @@ const getModuleInfo = (file) => {
   return moduleInfo;
 };
 
+// * 获取模块的路径、模块的依赖、模块转为es5的代码。
 const bundle = (file) => {
   const depsGraph = parseModules(file);
   // console.log(depsGraph);
